@@ -1,0 +1,3 @@
+pycurl
+certifi
+python-dateutil

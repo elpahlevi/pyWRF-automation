@@ -1,7 +1,7 @@
 """ 
 WRF-ARW Model & GFS Automation System using Python 3
 This WRF simulation uses 4 core processor
-Credit : Muhamad Reza Pahlevi (@elpahlevi on Github) (Author) & Agung Baruna SN (@absen22 on Github) (Co-author)
+Credit : Muhamad Reza Pahlevi (@elpahlevi on Github) & Agung Baruna SN (@absen22 on Github)
 If you find any trouble, reach the author on email : elpahlevi@hotmail.com 
 """
 

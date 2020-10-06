@@ -19,7 +19,7 @@ year  = str(dt.year)
 month = str("%02d" % (dt.month))
 day   = str("%02d" % (dt.day))
 
-#to imagine how the schema below works, just imagine this script was executed on September 23st 2020 (run for 8 days prediction) and running everyday
+#to imagine how the schema below works, just imagine this script was executed on September 23st 2020 (run for 7 days prediction) and running everyday
 prev_start_date = dt + relativedelta(days=-1)
 prev_end_date   = dt + relativedelta(days=6)
 start_date      = dt + relativedelta(days=0)

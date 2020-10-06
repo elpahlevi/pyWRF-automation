@@ -1,5 +1,5 @@
 # PyWRF-Automation
-Automation Script to download NOAA GFS data and execute Weather Research & Forecasting (WRF) model written in Python
+Automation Script to download the NOAA GFS data and execute Weather Research & Forecasting (WRF) model written in Python
 
 ## Prerequisites
 To using this script, you must complete following prerequisites such as :

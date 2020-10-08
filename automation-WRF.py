@@ -5,7 +5,6 @@ If you find any trouble, reach the author on email : elpahlevi@hotmail.com
 """
 
 import os, datetime, pycurl, certifi, subprocess, glob, re
-from os import sep
 from dateutil.relativedelta import relativedelta
 
 #set directory
@@ -14,12 +13,9 @@ namelist_wps_file = dir + "/WPS/namelist.wps"
 namelist_wrf_file = dir + "/WRF/test/em_real/namelist.input"
 
 #get today date
-dt    = datetime.datetime.today()
-year  = str(dt.year)
-month = str("%02d" % (dt.month))
-day   = str("%02d" % (dt.day))
+dt = datetime.datetime.today()
 
-#to imagine how the schema below works, just imagine this script was executed on September 23st 2020 (run for 7 days prediction) and running everyday
+#to imagine how the schema below works, just imagine this script was executed on September st 2020 (run for 7 days prediction) and running everyday
 prev_start_date = dt + relativedelta(days=-1)
 prev_end_date   = dt + relativedelta(days=6)
 start_date      = dt + relativedelta(days=0)
@@ -28,6 +24,9 @@ end_date        = dt + relativedelta(days=7)
 # Download the GFS file on 0.25 degree grid resolution based on defined region
 def downloadGFS(issued_time, forecast_time, left_lon, right_lon, top_lat, bottom_lat):
     base_URL = "https://nomads.ncep.noaa.gov/cgi-bin/"
+    year  = str(dt.year)
+    month = str("%02d" % (dt.month))
+    day   = str("%02d" % (dt.day))
 
     #Generate the urls and file name based on forecast_time parameter
     hours = ["%03d" % hrs for hrs in range(0, forecast_time, 3)]

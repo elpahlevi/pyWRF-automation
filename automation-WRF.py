@@ -4,29 +4,29 @@ Credit : Muhamad Reza Pahlevi (@elpahlevi on Github) & Agung Baruna Setiawan Noo
 If you find any trouble, reach the author on email : elpahlevi@hotmail.com 
 """
 
-import os, datetime, pycurl, certifi, subprocess, glob, re
+import os, datetime, pycurl, certifi, subprocess, re, time
 from dateutil.relativedelta import relativedelta
 
 #set directory
 dir = os.getcwd()
-namelist_wps_file = dir + "/WPS/namelist.wps"
-namelist_wrf_file = dir + "/WRF/test/em_real/namelist.input"
+namelist_wps_file = f"{dir}/WPS/namelist.wps"
+namelist_wrf_file = f"{dir}/WRF/test/em_real/namelist.input"
 
 #get today date
 dt = datetime.datetime.today()
 
-#to imagine how the schema below works, just imagine this script was executed on September st 2020 (run for 7 days prediction) and running everyday
-prev_start_date = dt + relativedelta(days=-1)
-prev_end_date   = dt + relativedelta(days=6)
-start_date      = dt + relativedelta(days=0)
-end_date        = dt + relativedelta(days=7)
+#to imagine how the schema below works, just imagine this script was executed on September 1st 2020 (run for 7 days prediction) and running everyday
+prev_start_date = dt + relativedelta(days=-9) #-9
+prev_end_date   = dt + relativedelta(days=-2) #-2
+start_date      = dt + relativedelta(days=-1) #-1
+end_date        = dt + relativedelta(days=6) #+6
 
 # Download the GFS file on 0.25 degree grid resolution based on defined region
 def downloadGFS(issued_time, forecast_time, left_lon, right_lon, top_lat, bottom_lat):
     base_URL = "https://nomads.ncep.noaa.gov/cgi-bin/"
-    year  = str(dt.year)
-    month = str("%02d" % (dt.month))
-    day   = str("%02d" % (dt.day))
+    year  = str(start_date.year)
+    month = str("%02d" % (start_date.month))
+    day   = str("%02d" % (start_date.day))
 
     #Generate the urls and file name based on forecast_time parameter
     hours = ["%03d" % hrs for hrs in range(0, forecast_time, 3)]
@@ -61,7 +61,7 @@ def changeNamelistWPS(namelist_file):
 
     #use sed command and f-string format to change the date value (Credit to : absen22 @github)
     subprocess.run([f"sed -i.backup -r '/^ start_date/s/'{prev_start_date_wps}_00:00:00'/'{start_date_wps}_00:00:00'/g' {namelist_file}"], shell=True)
-    subprocess.run([f"sed -i.backup -r '/^ end_date/s/'{prev_end_date_wps}_18:00:00'/'{end_date_wps}_18:00:00'/g' {namelist_file}"], shell=True)
+    subprocess.run([f"sed -i.backup -r '/^ end_date/s/'{prev_end_date_wps}_00:00:00'/'{end_date_wps}_00:00:00'/g' {namelist_file}"], shell=True)
     print("namelist.wps file has been changed!") 
 
 #read namelist.input on em_real folder (WRF/em_real) then replace start_year, start_month, start_day, start_hour, end_year, end_month, end_day, end_hour
@@ -106,12 +106,11 @@ def runWPS():
     subprocess.run([f"rm {delete_file}/FILE*"],shell=True)
     subprocess.run([f"rm {delete_file}/met_em*"], shell=True)
     subprocess.run([f"rm {delete_file}/GRIBFILE*"], shell=True)
+    subprocess.run([f"rm {delete_file}/geo_em*"], shell=True)
     
     #execute geogrid.exe
-    geo_files = glob.glob(dir + "/WPS/geo_em*")
-    if not(os.path.exists(geo_files[0])): #Check geo_em*
-        subprocess.run("./geogrid.exe", cwd=dir + "/WPS")
-        print("----------------------------Geogrid.exe executed----------------------------")
+    subprocess.run("./geogrid.exe", cwd=dir + "/WPS")
+    print("----------------------------Geogrid.exe executed----------------------------")
     
     #create link to GFS data
     gfs_date_folder = start_date.strftime("%Y-%m-%d")
@@ -132,6 +131,9 @@ def runWPS():
     subprocess.run("./metgrid.exe", cwd=dir + "/WPS")
 
 def runWRF(n_processor):
+    # Delete the met_em files from last simulation
+    subprocess.run([f"rm {dir}/WRF/test/em_real/met_em*"], shell=True)
+    
     #create link to all files named met_em*
     subprocess.run([f"ln -sf {dir}/WPS/met_em* ."], shell=True, cwd=dir + "/WRF/test/em_real/")
     print("All met_em* files has been linked")
@@ -149,9 +151,21 @@ def runWRF(n_processor):
     else:
         print("Check namelist.input")
 
-#Run the Code
-downloadGFS(issued_time = "00", forecast_time = 193, left_lon=95, right_lon=141, top_lat=6, bottom_lat=-11)
+def moveOutput(): #only domain #2 will be moved to another folder
+    folder_location = f"{dir}/WRF_output/" + "{start}_to_{end}".format(start = str(start_date.strftime("%Y-%m-%d")), end=str(end_date.strftime("%Y-%m-%d")))
+    if not(os.path.isdir(folder_location)): #Check if Directory exist
+        os.makedirs(folder_location)
+    subprocess.run([f"mv {dir}/WRF/test/em_real/wrfout_d02* {folder_location}"], shell=True, cwd=dir + "/WRF/test/em_real/")
+    print(f"Finally, WRF simulation files have been saved in {folder_location}")
+
+# Run the Code
+start_time = time.time()
+downloadGFS(issued_time = "00", forecast_time = 193, left_lon=90, right_lon=141, top_lat=8, bottom_lat=-13) #add +1 in forecast_time parameters if you want to download the GFS data for 7 days (192 hours) because python doesn't read the last index.
 changeNamelistWPS(namelist_file = namelist_wps_file)
 changeNameListWRF(namelist_file = namelist_wrf_file)
 runWPS()
-runWRF(n_processor=4)
+runWRF(n_processor=16) #adjust the number of processors depend on your PC
+moveOutput()
+# calculate how long the process runs
+end_time = ("%1d" % ((time.time() - start_time) / 3600))
+print(f"WRF model complete in {end_time} hours")

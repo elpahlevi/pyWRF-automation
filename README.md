@@ -63,4 +63,4 @@ wrfout_domain_data      = 1
 5. Run the program by typing `python main.py`
 
 ## Credit
-Copyright (c) 2020-present <a href="https://github.com/elpahlevi">Reza Pahlevi</a> and <a href="https://github.com/absen22">Agung Baruna Setiawan Noor</a>.
+Copyright (c) 2020-present <a href="https://github.com/elpahlevi">Reza Pahlevi</a> and <a href="https://github.com/agungbaruna">Agung Baruna Setiawan Noor</a>.

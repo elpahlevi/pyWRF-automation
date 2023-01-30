@@ -1,6 +1,6 @@
 """ 
 WRF-ARW Model & GFS Automation System using Python 3
-Credit : Muhamad Reza Pahlevi (@elpahlevi on Github) & Agung Baruna Setiawan Noor (@absen22 on Github)
+Credit : Muhamad Reza Pahlevi (@elpahlevi) & Agung Baruna Setiawan Noor (@agungbaruna)
 If you find any trouble, reach the author via email : mr.levipahlevi@gmail.com 
 """
 

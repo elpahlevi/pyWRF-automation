@@ -2,10 +2,13 @@ import os
 import sys
 import re
 import subprocess
+import requests
+import time
 from datetime import date
+from concurrent.futures import ThreadPoolExecutor
 
-# Download the GFS data on 0.25 degree grid based on defined arguments
-def download_gfs(path: str, start_date: date, issued_time: str, forecast_time: int, increment: int, left_lon: float, right_lon: float, top_lat: float, bottom_lat: float):
+# Generate list of url, filename, and filepath that will be used by download_gfs_parallel function
+def generate_url(folder_path: str, start_date: date, issued_time: str, forecast_time: int, increment: int, left_lon: float, right_lon: float, top_lat: float, bottom_lat: float):
     if forecast_time > 384:
         sys.exit("Error: Forecast time can't be more than 384")
     
@@ -14,29 +17,33 @@ def download_gfs(path: str, start_date: date, issued_time: str, forecast_time: i
     month = str("%02d" % (start_date.month))
     day   = str("%02d" % (start_date.day))
 
-    # Generate URL and filename based on length of forecast time
-    list_hours = ["%03d" % hrs for hrs in range(0, forecast_time + 1, increment)]
+    # Generate list of url, filename, and filepath based on the length of forecast time
     list_url = [f"{base_url}filter_gfs_0p25.pl?file=gfs.t{issued_time}z.pgrb2.0p25.f" + "%03d" % hour + f"&all_lev=on&all_var=on&subregion=&leftlon={str(left_lon)}&rightlon={str(right_lon)}&toplat={str(top_lat)}&bottomlat={str(bottom_lat)}&dir=%2Fgfs.{year}{month}{day}%2F{issued_time}%2Fatmos" for hour in range(0, forecast_time + 1, increment)]
     list_filename = [f"gfs_4_{year}{month}{day}_{issued_time}00_" + "%03d" % hour + ".grb2" for hour in range(0, forecast_time + 1, increment)]
+    list_filepath = [f"{folder_path}/{filename}" for filename in list_filename]
 
-    # create a folder path
-    folder_location = f"{path}/{year}-{month}-{day}/"
+    return zip(list_url, list_filename, list_filepath)
 
-    # Check if Directory exist
-    if not(os.path.isdir(folder_location)):
-        os.makedirs(folder_location)
-    print(f"GFS files will be saved in {folder_location}")
+# Setup download worker
+def download_worker(data):
+    start_time = time.time()
+    response = requests.get(data[0])
+    with open(data[2], "wb") as f:
+        f.write(response.content)
+    end_time = time.time()
+    print(f"{data[1]} has been downloaded in {int(end_time - start_time)} seconds")
 
-    # Download GFS data using curl
-    for url, filename, hours in zip(list_url, list_filename, list_hours):
-        # Check if GFS file exist
-        file_path = folder_location + filename
-        if os.path.exists(file_path):
-            print("File Exist")
-            continue
-        # Execute curl using subprocess
-        subprocess.run([f"curl \"{url}\" -o {file_path}"], shell=True)
-        print(f"GFS data on {day}-{month}-{year} at issued time {issued_time} and forecast time {hours} has been downloaded")
+# Download GFS data concurrently
+def download_gfs(path: str, n_worker: int, start_date: date, issued_time: str, forecast_time: int, increment: int, left_lon: float, right_lon: float, top_lat: float, bottom_lat: float):
+    formatted_date = start_date.strftime("%Y-%m-%d")
+    folder_path = f"{path}/{formatted_date}"
+    if not(os.path.isdir(folder_path)):
+        os.makedirs(folder_path)
+    print(f"GFS files will be saved in {folder_path}")
+    
+    data = generate_url(folder_path, start_date, issued_time, forecast_time, increment, left_lon, right_lon, top_lat, bottom_lat)
+    with ThreadPoolExecutor(max_workers=n_worker) as executor:
+        executor.map(download_worker, data)
     print(f"All GFS files with issued time {issued_time} has been downloaded")
 
 # Read namelist.wps file then replace start_date and end_date value

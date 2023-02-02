@@ -62,29 +62,23 @@ def change_namelist_wps(start_date: date, end_date: date, namelist_path: str):
 
 # Read namelist.input file then replace start_year, start_month, start_day, start_hour, end_year, end_month, end_day, end_hour
 def change_namelist_wrf(start_date: date, end_date: date, namelist_path: str):
-    # split start_date variable into year, month, and day
-    start_year_wrf = str(start_date.year)
-    start_month_wrf = str("%02d" % start_date.month)
-    start_day_wrf = str("%02d" % start_date.day)
-    
-    # split end_date variable into year, month, day
-    end_year_wrf = str(end_date.year)
-    end_month_wrf = str("%02d" % end_date.month)
-    end_day_wrf = str("%02d" % end_date.day)
+    current_start_date  = start_date.strftime("%Y-%m-%d").split("-")
+    current_end_date    = end_date.strftime("%Y-%m-%d").split("-")
+    run_days            = int((end_date - start_date).total_seconds() / 86400)
 
     # Use sed command to change the date value (Credit to : absen22 @github)
     # change run_days value
-    subprocess.run([f"sed -i.backup -r '/^ run_days/s/'0'/'{start_day_wrf}'/g' {namelist_path}"], shell=True)
+    subprocess.run([f"sed -i.backup -r '/^ run_days/s/'0'/'{run_days}'/g' {namelist_path}"], shell=True)
 
     # change start values
-    subprocess.run([f"sed -i.backup -r '/^ start_year/s/'2000'/'{start_year_wrf}'/g' {namelist_path}"], shell=True)
-    subprocess.run([f"sed -i.backup -r '/^ start_month/s/'01'/'{start_month_wrf}'/g' {namelist_path}"], shell=True)
-    subprocess.run([f"sed -i.backup -r '/^ start_day/s/'01'/'{start_day_wrf}'/g' {namelist_path}"], shell=True)
+    subprocess.run([f"sed -i.backup -r '/^ start_year/s/'2000'/'{current_start_date[0]}'/g' {namelist_path}"], shell=True)
+    subprocess.run([f"sed -i.backup -r '/^ start_month/s/'01'/'{current_start_date[1]}'/g' {namelist_path}"], shell=True)
+    subprocess.run([f"sed -i.backup -r '/^ start_day/s/'01'/'{current_start_date[2]}'/g' {namelist_path}"], shell=True)
     
     # change end values
-    subprocess.run([f"sed -i.backup -r '/^ end_year/s/'2000'/'{end_year_wrf}'/g' {namelist_path}"], shell=True)
-    subprocess.run([f"sed -i.backup -r '/^ end_month/s/'01'/'{end_month_wrf}'/g' {namelist_path}"], shell=True)
-    subprocess.run([f"sed -i.backup -r '/^ end_day/s/'01'/'{end_day_wrf}'/g' {namelist_path}"], shell=True)
+    subprocess.run([f"sed -i.backup -r '/^ end_year/s/'2000'/'{current_end_date[0]}'/g' {namelist_path}"], shell=True)
+    subprocess.run([f"sed -i.backup -r '/^ end_month/s/'01'/'{current_end_date[1]}'/g' {namelist_path}"], shell=True)
+    subprocess.run([f"sed -i.backup -r '/^ end_day/s/'01'/'{current_end_date[2]}'/g' {namelist_path}"], shell=True)
     
     print("namelist.input file has been updated!")
     print("The model will simulate from {start} to {end}".format(start = start_date.strftime("%d-%m-%Y"), end = end_date.strftime("%d-%m-%Y")))
@@ -99,7 +93,7 @@ def run_wps(wps_path: str, gfsout_path: str, start_date: date):
     
     #execute geogrid.exe
     subprocess.run("./geogrid.exe", cwd=wps_path)
-    print("----------------------------Geogrid.exe executed----------------------------")
+    print("geogrid.exe executed")
     
     #create link to GFS data
     gfs_date_folder = start_date.strftime("%Y-%m-%d")
@@ -142,9 +136,11 @@ def run_wrf(wps_path: str, wrf_path: str, np: int):
         sys.exit("Check namelist.input")
 
 # Move the output to specific folder based on selected domain
-def move_output(wrf_path: str, domain: int, output_path: str):
-    if not(os.path.isdir(output_path)):
-        os.makedirs(output_path)
+def move_output(wrf_path: str, wrfout_path: str, start_date: date, domain: int):
+    wrfout_date = start_date.strftime("%Y-%m-%d")
+    folder_path = f"{wrfout_path}/{wrfout_date}"
+    if not(os.path.isdir(folder_path)):
+        os.makedirs(folder_path)
     
-    subprocess.run([f"mv {wrf_path}/wrfout_d0{domain}* {output_path}/wrfout_d0{domain}.nc"], shell=True, cwd=wrf_path)
-    print(f"WRF simulation files on domain {domain} has been saved to {output_path}")
+    subprocess.run([f"mv {wrf_path}/wrfout_d0{domain}* {folder_path}/wrfout_d0{domain}_{wrfout_date}.nc"], shell=True, cwd=wrf_path)
+    print(f"WRF simulation files on domain {domain} has been saved to {wrfout_path}")

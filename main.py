@@ -9,10 +9,10 @@ import datetime as dt
 import utils
 
 # Arguments
-gfsout_path             = "/home/your_username/wrf_model/gfs_dataset"      # Path to GFS dataset folder
-wps_path                = "/home/your_username/wrf_model/wps"              # Path to compiled WPS folder
-wrf_path                = "/home/your_username/wrf_model/wrf/test/em_real" # Path to compiled WRF em_real folder
-wrfout_path             = "/home/your_username/wrf_model/wrf_output"       # Path to wrfout folder
+gfsout_folder_path      = "/home/your_username/wrf_model/gfs_dataset"      # Path to GFS dataset folder
+wps_folder_path         = "/home/your_username/wrf_model/wps"              # Path to compiled WPS folder
+wrf_folder_path         = "/home/your_username/wrf_model/wrf/test/em_real" # Path to compiled WRF em_real folder
+wrfout_folder_path      = "/home/your_username/wrf_model/wrf_output"       # Path to wrfout folder
 gfs_num_workers         = 4     # Number of workers will be assigned to download gfs concurrently
 gfs_download_increment  = 3     # set to 1 if you want to download gfs dataset for every forecast hours
 gfs_left_lon            = 110   # -180 to 180
@@ -32,21 +32,20 @@ end_date                = start_date + dt.timedelta(days = wrf_forecast_duration
 delta_in_seconds        = (end_date - start_date).total_seconds()
 gfs_forecast_time       = int(delta_in_seconds / 3600)
 
-# Path to namelist.wps, namelist.input file, and wrfout folder
-namelist_wps_file   = f"{wps_path}/namelist.wps"
-namelist_wrf_file   = f"{wrf_path}/namelist.input"
-wrfout_folder_path  = f"{wrfout_path}/" + "{date}".format(date = start_date.strftime("%Y-%m-%d"))
+# Path to namelist.wps, namelist.input file
+namelist_wps_file   = f"{wps_folder_path}/namelist.wps"
+namelist_wrf_file   = f"{wrf_folder_path}/namelist.input"
 
 # Execute functions
-utils.download_gfs(path = gfsout_path, n_worker = gfs_num_workers, start_date = start_date, issued_time = "00", forecast_time=gfs_forecast_time, increment = gfs_download_increment, left_lon = gfs_left_lon, right_lon = gfs_right_lon, top_lat = gfs_top_lat, bottom_lat = gfs_bottom_lat)
-utils.download_gfs(path = gfsout_path, n_worker = gfs_num_workers, start_date = start_date, issued_time = "06", forecast_time=gfs_forecast_time, increment = gfs_download_increment, left_lon = gfs_left_lon, right_lon = gfs_right_lon, top_lat = gfs_top_lat, bottom_lat = gfs_bottom_lat)
-utils.download_gfs(path = gfsout_path, n_worker = gfs_num_workers, start_date = start_date, issued_time = "12", forecast_time=gfs_forecast_time, increment = gfs_download_increment, left_lon = gfs_left_lon, right_lon = gfs_right_lon, top_lat = gfs_top_lat, bottom_lat = gfs_bottom_lat)
-utils.download_gfs(path = gfsout_path, n_worker = gfs_num_workers, start_date = start_date, issued_time = "18", forecast_time=gfs_forecast_time, increment = gfs_download_increment, left_lon = gfs_left_lon, right_lon = gfs_right_lon, top_lat = gfs_top_lat, bottom_lat = gfs_bottom_lat)
-utils.change_namelist_wps(start_date = start_date, end_date = end_date, namelist_path = namelist_wps_file)
-utils.change_namelist_wrf(start_date = start_date, end_date = end_date, namelist_path = namelist_wrf_file)
-utils.run_wps(wps_path = wps_path, gfsout_path = gfsout_path, start_date = start_date)
-utils.run_wrf(wps_path = wps_path, wrf_path = wrf_path, np = num_proc)
-utils.move_output(wrf_path = wrf_path, domain = wrfout_domain_data, output_path = wrfout_folder_path)
+utils.download_gfs(gfsout_folder_path, gfs_num_workers, start_date, "00", gfs_forecast_time, gfs_download_increment, gfs_left_lon, gfs_right_lon, gfs_top_lat, gfs_bottom_lat)
+utils.download_gfs(gfsout_folder_path, gfs_num_workers, start_date, "06", gfs_forecast_time, gfs_download_increment, gfs_left_lon, gfs_right_lon, gfs_top_lat, gfs_bottom_lat)
+utils.download_gfs(gfsout_folder_path, gfs_num_workers, start_date, "12", gfs_forecast_time, gfs_download_increment, gfs_left_lon, gfs_right_lon, gfs_top_lat, gfs_bottom_lat)
+utils.download_gfs(gfsout_folder_path, gfs_num_workers, start_date, "18", gfs_forecast_time, gfs_download_increment, gfs_left_lon, gfs_right_lon, gfs_top_lat, gfs_bottom_lat)
+utils.change_namelist_wps(start_date, end_date, namelist_wps_file)
+utils.change_namelist_wrf(start_date, end_date, namelist_wrf_file)
+utils.run_wps(wps_folder_path, gfsout_folder_path, start_date)
+utils.run_wrf(wps_folder_path, wrf_folder_path, num_proc)
+utils.move_output(wrf_folder_path, wrfout_folder_path, start_date, wrfout_domain_data)
 
 # Calculate execution time
 end_time = time.time()

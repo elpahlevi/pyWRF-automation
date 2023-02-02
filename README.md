@@ -19,30 +19,32 @@ gfsout_path             = "/home/your_username/wrf_model/gfs_dataset"
 wps_path                = "/home/your_username/wrf_model/wps"
 wrf_path                = "/home/your_username/wrf_model/wrf/test/em_real"
 wrfout_path             = "/home/your_username/wrf_model/wrf_output"
+gfs_num_workers         = 4
 gfs_download_increment  = 1
-gfs_left_lon            = 90
-gfs_right_lon           = 141
-gfs_top_lat             = 8
-gfs_bottom_lat          = -13
+gfs_left_lon            = 110
+gfs_right_lon           = 115
+gfs_top_lat             = -2
+gfs_bottom_lat          = -5
 wrf_forecast_duration   = 1 
-wrf_num_proc            = 1
+num_proc                = 1
 wrfout_domain_data      = 1
 ```
 
-| Argument               | Data Type | Range                   | Description                                                        | Note                                                                    |
-|------------------------|-----------|-------------------------|--------------------------------------------------------------------|-------------------------------------------------------------------------|
-| gfsout_path            | str       | -                       | Path to GFS dataset folder                                         | -                                                                       |
-| wps_path               | str       | -                       | Path to compiled WPS folder                                        | -                                                                       |
-| wrf_path               | str       | -                       | Path to compiled WRF met_em folder                                 | -                                                                       |
-| wrfout_path            | str       | -                       | Path to wrfout folder                                              | -                                                                       |
-| gfs_download_increment | int       | -                       | Which GFS forecast hours data will be downloaded                   | Set to `1` if you want to download GFS dataset for every forecast hours |
-| gfs_left_lon           | float     | -180 to 180             | Longitude                                                          | gfs_left_lon < gfs_right_lon                                            |
-| gfs_right_lon          | float     | -180 to 180             | Longitude                                                          | -                                                                       |
-| gfs_top_lat            | float     | -90 to 90               | Latitude                                                           | gfs_top_lat > gfs_bottom_lat                                            |
-| gfs_bottom_lat         | float     | -90 to 90               | Latitude                                                           | -                                                                       |
-| wrf_forecast_duration  | int       | 1 to 16 (in days)       | Length of simulation days                                          | -                                                                       |
-| wrf_num_proc           | int       | 1 to `nproc`            | Number of CPU cores will be used to execute `real.exe` & `wrf.exe` | -                                                                       |
-| wrfout_domain_data     | int       | 1 to `number_of_domain` | Which wrfout file will be saved                                    | Set to `1` if you want to save wrfout file on domain 1 etc              |
+| Argument               | Data Type | Range                   | Description                                                          | Note                                                                    |
+|------------------------|-----------|-------------------------|----------------------------------------------------------------------|-------------------------------------------------------------------------|
+| gfsout_path            | str       | -                       | Path to GFS dataset folder                                           | -                                                                       |
+| wps_path               | str       | -                       | Path to compiled WPS folder                                          | -                                                                       |
+| wrf_path               | str       | -                       | Path to compiled WRF met_em folder                                   | -                                                                       |
+| wrfout_path            | str       | -                       | Path to wrfout folder                                                | -                                                                       |
+| gfs_num_workers        | int       | 1 to `nproc`            | Number of workers will be assigned to download gfs data concurrently | Higher value will make download faster, but it will cost CPU cores      |
+| gfs_download_increment | int       | -                       | Which GFS forecast hours data will be downloaded                     | Set to `1` if you want to download GFS dataset for every forecast hours |
+| gfs_left_lon           | float     | -180 to 180             | Longitude                                                            | gfs_left_lon < gfs_right_lon                                            |
+| gfs_right_lon          | float     | -180 to 180             | Longitude                                                            | -                                                                       |
+| gfs_top_lat            | float     | -90 to 90               | Latitude                                                             | gfs_top_lat > gfs_bottom_lat                                            |
+| gfs_bottom_lat         | float     | -90 to 90               | Latitude                                                             | -                                                                       |
+| wrf_forecast_duration  | int       | 1 to 16 (in days)       | Length of simulation days                                            | -                                                                       |
+| num_proc               | int       | 1 to `nproc`            | Number of CPU cores will be used to execute `real.exe` & `wrf.exe`   | -                                                                       |
+| wrfout_domain_data     | int       | 1 to `number_of_domain` | Which wrfout file will be saved                                      | Set to `1` if you want to save wrfout file on domain 1 etc              |
 
 > Note: in order to download GFS dataset for several hours (eg: every 3 hours), set `gfs_download_increment` argument to 3.
 
@@ -59,7 +61,7 @@ wrfout_domain_data      = 1
 | end_month   | 01    |
 | end_day     | 01    |
 
-4. Export `LD_LIBRARY_PATH`
+4. Export path `LD_LIBRARY_PATH`
 5. Run the program by typing `python main.py`
 
 ## Credit

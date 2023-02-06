@@ -49,15 +49,4 @@ utils.move_output(wrf_folder_path, wrfout_folder_path, start_date, wrfout_domain
 
 # Calculate execution time
 end_time = time.time()
-if end_time - start_time < 60:
-    execution_duration = ("%1d" % (end_time - start_time))
-    print(f"Process completed in {execution_duration} seconds")
-    exit(0)
-elif end_time - start_time < 3600:
-    execution_duration = ("%1d" % ((end_time - start_time) / 60))
-    print(f"Process completed in {execution_duration} minutes")
-    exit(0)
-else:
-    execution_duration = ("%1d" % ((end_time - start_time) / 3600))
-    print(f"Process complete in {execution_duration} hours")
-    exit(0)
+utils.calculate_execution_time(start_time, end_time)

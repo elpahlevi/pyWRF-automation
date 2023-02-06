@@ -147,3 +147,18 @@ def move_output(wrf_path: str, wrfout_path: str, start_date: date, domain: int):
     
     subprocess.run([f"mv {wrf_path}/wrfout_d0{domain}* {folder_path}/wrfout_d0{domain}_{wrfout_date}.nc"], shell=True, cwd=wrf_path)
     print(f"WRF simulation files on domain {domain} has been saved to {wrfout_path}")
+
+# Calculate execution time
+def calculate_execution_time(start: float, stop: float):
+    if stop - start < 60:
+        execution_duration = ("%1d" % (stop - start))
+        print(f"Process completed in {execution_duration} seconds")
+        exit(0)
+    elif stop - start < 3600:
+        execution_duration = ("%1d" % ((stop - start) / 60))
+        print(f"Process completed in {execution_duration} minutes")
+        exit(0)
+    else:
+        execution_duration = ("%1d" % ((stop - start) / 3600))
+        print(f"Process complete in {execution_duration} hours")
+        exit(0)

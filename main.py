@@ -4,8 +4,8 @@ Credit : Muhamad Reza Pahlevi (@elpahlevi) & Agung Baruna Setiawan Noor (@agungb
 If you find any trouble, reach the author via email : mr.levipahlevi@gmail.com 
 """
 
+from datetime import datetime, timedelta
 import time
-import datetime as dt
 import utils
 
 # Arguments
@@ -27,8 +27,8 @@ wrfout_domain_data      = 1     # which wrfout file will be saved
 start_time = time.time()
 
 # Set start_date, end_date, and forecast_time
-start_date              = dt.datetime.today() - dt.timedelta(days = 1)
-end_date                = start_date + dt.timedelta(days = wrf_forecast_duration)
+start_date              = datetime.today() - timedelta(days = 1)
+end_date                = start_date + timedelta(days = wrf_forecast_duration)
 delta_in_seconds        = (end_date - start_date).total_seconds()
 gfs_forecast_time       = int(delta_in_seconds / 3600)
 

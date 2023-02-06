@@ -8,7 +8,7 @@ To using this script, you must complete following prerequisites such as:
 3. MPI Package (OpenMPI/Intel MPI/MPICH)
 4. WRF-ARW Model with `em_real` case using `dmpar` compiler selection.
 
-This repository includes two script, which is `main.py` as executable script and `utils.py` as a collection of function that will be used by `main.py` script.
+This repository includes two script, which is `main.py` as an executable script and `utils.py` as a collection of function that will be used by `main.py` script.
 
 ## How to use
 1. Open `main.py` file and change the values below `Arguments` comment (line 11):
@@ -20,7 +20,7 @@ wps_path                = "/home/your_username/wrf_model/wps"
 wrf_path                = "/home/your_username/wrf_model/wrf/test/em_real"
 wrfout_path             = "/home/your_username/wrf_model/wrf_output"
 gfs_num_workers         = 4
-gfs_download_increment  = 1
+gfs_download_increment  = 3
 gfs_left_lon            = 110
 gfs_right_lon           = 115
 gfs_top_lat             = -2
@@ -61,8 +61,8 @@ wrfout_domain_data      = 1
 | end_month   | 01    |
 | end_day     | 01    |
 
-4. Export path `LD_LIBRARY_PATH`
-5. Run the program by typing `python main.py`
+4. Export libraries path `LD_LIBRARY_PATH` that will be used by wps.exe and wrf.exe.
+5. Execute the program by typing `python main.py`
 
 ## Credit
 Copyright (c) 2020-present <a href="https://github.com/elpahlevi">Reza Pahlevi</a> and <a href="https://github.com/agungbaruna">Agung Baruna Setiawan Noor</a>.

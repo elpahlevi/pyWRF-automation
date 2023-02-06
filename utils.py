@@ -27,11 +27,14 @@ def generate_url(folder_path: str, start_date: date, issued_time: str, forecast_
 # Setup download worker
 def download_worker(data):
     start_time = time.time()
-    response = requests.get(data[0])
-    with open(data[2], "wb") as f:
-        f.write(response.content)
-    end_time = time.time()
-    print(f"{data[1]} has been downloaded in {int(end_time - start_time)} seconds")
+    if not os.path.exists(data[2]):
+        response = requests.get(data[0])
+        with open(data[2], "wb") as f:
+            f.write(response.content)
+        end_time = time.time()
+        print(f"{data[1]} has been downloaded in {int(end_time - start_time)} seconds")
+    else:
+        print(f"File {data[1]} is already exist")
 
 # Download GFS data concurrently
 def download_gfs(path: str, n_worker: int, start_date: date, issued_time: str, forecast_time: int, increment: int, left_lon: float, right_lon: float, top_lat: float, bottom_lat: float):

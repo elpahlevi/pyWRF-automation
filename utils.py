@@ -26,8 +26,8 @@ def generate_url(folder_path: str, start_date: date, issued_time: str, forecast_
 
 # Setup download worker
 def download_worker(data):
-    start_time = time.time()
     if not os.path.exists(data[2]):
+        start_time = time.time()
         response = requests.get(data[0])
         with open(data[2], "wb") as f:
             f.write(response.content)

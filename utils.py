@@ -4,6 +4,7 @@ import re
 import subprocess
 import requests
 import time
+import glob
 from datetime import date
 from concurrent.futures import ThreadPoolExecutor
 
@@ -92,10 +93,10 @@ def run_wps(wps_path: str, gfsout_path: str, start_date: date):
     subprocess.run([f"rm {wps_path}/FILE*"],shell=True)
     subprocess.run([f"rm {wps_path}/met_em*"], shell=True)
     subprocess.run([f"rm {wps_path}/GRIBFILE*"], shell=True)
-    subprocess.run([f"rm {wps_path}/geo_em*"], shell=True)
     
     #execute geogrid.exe
-    subprocess.run("./geogrid.exe", cwd=wps_path)
+    if not glob.glob(f"{wps_path}/geo_em*"):
+        subprocess.run("./geogrid.exe", cwd=wps_path)
     print("geogrid.exe executed")
     
     #create link to GFS data

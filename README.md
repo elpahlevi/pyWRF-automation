@@ -11,58 +11,36 @@ To using this script, you must complete following prerequisites such as:
 This repository includes two script, which is `main.py` as an executable script and `utils.py` as a collection of function that will be used by `main.py` script.
 
 ## How to use
-1. Open `main.py` file and change the values below `Arguments` comment (line 11):
+1. Open `main.py` file and change the values from line 10 to 31:
 
 ```python
-# Arguments
-gfsout_path             = "/home/your_username/wrf_model/gfs_dataset"
-wps_path                = "/home/your_username/wrf_model/wps"
-wrf_path                = "/home/your_username/wrf_model/wrf/test/em_real"
-wrfout_path             = "/home/your_username/wrf_model/wrf_output"
-gfs_num_workers         = 4
-gfs_download_increment  = 3
-gfs_left_lon            = 110
-gfs_right_lon           = 115
-gfs_top_lat             = -2
-gfs_bottom_lat          = -5
-wrf_forecast_duration   = 1 
-num_proc                = 1
-wrfout_domain_data      = 1
+# Folder path
+base_dir                = "/home/your_username/wrf_model"
+gfs_dir                 = f"{base_dir}/gfs_dataset"         # Path to GFS dataset folder
+wps_dir                 = f"{base_dir}/wps"                 # Path to compiled WPS folder
+wrf_dir                 = f"{base_dir}/wrf/test/em_real"    # Path to compiled WRF em_real folder
+wrfout_dir              = f"{base_dir}/wrf_output"          # Path to wrfout folder
+namelist_wps_file       = f"{wps_dir}/namelist.wps"         # Path to namelist.wps file
+namelist_wrf_file       = f"{wrf_dir}/namelist.input"       # Path to namelist.input file
+
+# GFS Downloader parameters
+gfs_num_workers         = 4     # Number of workers will be assigned to download gfs concurrently
+gfs_download_increment  = 3     # set to 1 if you want to download gfs dataset for every forecast hours
+gfs_left_lon            = 110   # -180 to 180
+gfs_right_lon           = 115   # -180 to 180
+gfs_top_lat             = -2    # -90 to 90
+gfs_bottom_lat          = -5    # -90 to 90
+
+# WPS and WRF parameters
+forecast_duration       = 1     # length of simulation days
+max_dom                 = 3     # Maximum WPS and WRF domain
+num_proc                = 4     # number of CPU cores will be used to execute real.exe & wrf.exe
+wrfout_saved_domain     = 3     # which wrfout file will be saved
 ```
 
-| Argument               | Data Type | Range                   | Description                                                          | Note                                                                    |
-|------------------------|-----------|-------------------------|----------------------------------------------------------------------|-------------------------------------------------------------------------|
-| gfsout_path            | str       | -                       | Path to GFS dataset folder                                           | -                                                                       |
-| wps_path               | str       | -                       | Path to compiled WPS folder                                          | -                                                                       |
-| wrf_path               | str       | -                       | Path to compiled WRF met_em folder                                   | -                                                                       |
-| wrfout_path            | str       | -                       | Path to wrfout folder                                                | -                                                                       |
-| gfs_num_workers        | int       | 1 to `nproc`            | Number of workers will be assigned to download gfs data concurrently | Higher value will make download faster, but it will cost CPU cores      |
-| gfs_download_increment | int       | -                       | Which GFS forecast hours data will be downloaded                     | Set to `1` if you want to download GFS dataset for every forecast hours |
-| gfs_left_lon           | float     | -180 to 180             | Longitude                                                            | gfs_left_lon < gfs_right_lon                                            |
-| gfs_right_lon          | float     | -180 to 180             | Longitude                                                            | -                                                                       |
-| gfs_top_lat            | float     | -90 to 90               | Latitude                                                             | gfs_top_lat > gfs_bottom_lat                                            |
-| gfs_bottom_lat         | float     | -90 to 90               | Latitude                                                             | -                                                                       |
-| wrf_forecast_duration  | int       | 1 to 16 (in days)       | Length of simulation days                                            | -                                                                       |
-| num_proc               | int       | 1 to `nproc`            | Number of CPU cores will be used to execute `real.exe` & `wrf.exe`   | -                                                                       |
-| wrfout_domain_data     | int       | 1 to `number_of_domain` | Which wrfout file will be saved                                      | Set to `1` if you want to save wrfout file on domain 1 etc              |
-
-> Note: in order to download GFS dataset for several hours (eg: every 3 hours), set `gfs_download_increment` argument to 3.
-
-2. Open `namelist.wps` file then set `start_date` and `end_date` value to `2000-01-01_00:00:00`.
-3. Open `namelist.input` file then set the following variables using this value below:
-
-| Variable    | value |
-|-------------|-------|
-| run_days    | 0     |
-| start_year  | 2000  |
-| start_month | 01    |
-| start_day   | 01    |
-| end_year    | 2000  |
-| end_month   | 01    |
-| end_day     | 01    |
-
-4. Export libraries path `LD_LIBRARY_PATH` that will be used by wps.exe and wrf.exe.
-5. Execute the program by typing `python main.py`
+> Note: in order to download GFS dataset for every n hours (eg: every 3 hours), set `gfs_download_increment` to 3.
+2. Export libraries path `LD_LIBRARY_PATH` that will be used by wps.exe and wrf.exe.
+3. Execute the program by typing `python main.py`
 
 ## Credit
 Copyright (c) 2020-present <a href="https://github.com/elpahlevi">Reza Pahlevi</a> and <a href="https://github.com/agungbaruna">Agung Baruna Setiawan Noor</a>.

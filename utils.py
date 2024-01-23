@@ -1,163 +1,200 @@
-import os
-import sys
-import re
-import subprocess
-import requests
-import time
-from datetime import date
+from datetime import datetime, timedelta
 from concurrent.futures import ThreadPoolExecutor
+from pathlib import Path
+import os, shutil, sys, re, subprocess, requests, time, logging
 
-# Generate list of url, filename, and filepath that will be used by download_gfs_parallel function
-def generate_url(folder_path: str, start_date: date, issued_time: str, forecast_time: int, increment: int, left_lon: float, right_lon: float, top_lat: float, bottom_lat: float):
+# For logging purposes
+logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO)
+
+# Setup download worker
+def gfs_download_worker(data):
+    if not os.path.exists(data[1]):
+        start_time = time.time()
+        response = requests.get(data[0])
+        with open(data[1], "wb") as f:
+            f.write(response.content)
+        end_time = time.time()
+        logging.info(f"INFO: GFS Downloader - {Path(data[1]).name} has been downloaded in {int(end_time - start_time)} seconds")
+    else:
+        logging.info(f"INFO: GFS Downlaoder - File {Path(data[1]).name} is already exist, skipped")
+
+# Download GFS dataset concurrently
+def download_gfs(path: str, n_worker: int, start_date: datetime, forecast_time: int, increment: int, cycle_time: str, left_lon: float, right_lon: float, top_lat: float, bottom_lat: float):
     if forecast_time > 384:
-        sys.exit("Error: Forecast time can't be more than 384")
+        sys.exit("ERROR: GFS Downloader - Forecast time can't be more than 384")
     
-    base_url = "https://nomads.ncep.noaa.gov/cgi-bin/"
+    folder_path = f"{path}/{start_date.strftime('%Y-%m-%d')}"
+    base_url = "https://nomads.ncep.noaa.gov/cgi-bin"
     year  = str(start_date.year)
     month = str("%02d" % (start_date.month))
     day   = str("%02d" % (start_date.day))
 
-    # Generate list of url, filename, and filepath based on the length of forecast time
-    list_url = [f"{base_url}filter_gfs_0p25.pl?file=gfs.t{issued_time}z.pgrb2.0p25.f" + "%03d" % hour + f"&all_lev=on&all_var=on&subregion=&leftlon={str(left_lon)}&rightlon={str(right_lon)}&toplat={str(top_lat)}&bottomlat={str(bottom_lat)}&dir=%2Fgfs.{year}{month}{day}%2F{issued_time}%2Fatmos" for hour in range(0, forecast_time + 1, increment)]
-    list_filename = [f"gfs_4_{year}{month}{day}_{issued_time}00_" + "%03d" % hour + ".grb2" for hour in range(0, forecast_time + 1, increment)]
-    list_filepath = [f"{folder_path}/{filename}" for filename in list_filename]
-
-    return zip(list_url, list_filename, list_filepath)
-
-# Setup download worker
-def download_worker(data):
-    if not os.path.exists(data[2]):
-        start_time = time.time()
-        response = requests.get(data[0])
-        with open(data[2], "wb") as f:
-            f.write(response.content)
-        end_time = time.time()
-        print(f"{data[1]} has been downloaded in {int(end_time - start_time)} seconds")
-    else:
-        print(f"File {data[1]} is already exist")
-
-# Download GFS data concurrently
-def download_gfs(path: str, n_worker: int, start_date: date, issued_time: str, forecast_time: int, increment: int, left_lon: float, right_lon: float, top_lat: float, bottom_lat: float):
-    formatted_date = start_date.strftime("%Y-%m-%d")
-    folder_path = f"{path}/{formatted_date}"
     if not(os.path.isdir(folder_path)):
         os.makedirs(folder_path)
-    print(f"GFS files will be saved in {folder_path}")
+    logging.info(f"INFO: GFS Downloader - Dataset will be saved in {folder_path}")
+
+    list_url = [f"{base_url}/filter_gfs_0p25.pl?file=gfs.t{cycle_time}z.pgrb2.0p25.f{'%03d' % hour}&all_lev=on&all_var=on&subregion=&leftlon={str(left_lon)}&rightlon={str(right_lon)}&toplat={str(top_lat)}&bottomlat={str(bottom_lat)}&dir=%2Fgfs.{year}{month}{day}%2F{cycle_time}%2Fatmos" for hour in range(0, forecast_time + 1, increment)]
+    list_filepath = [f"{folder_path}/gfs_4_{year}{month}{day}_{cycle_time}00_{'%03d' % hour}.grb2" for hour in range(0, forecast_time + 1, increment)]
+
+    with ThreadPoolExecutor(max_workers = n_worker) as executor:
+        executor.map(gfs_download_worker, zip(list_url, list_filepath))
+    logging.info(f"INFO: GFS Downloader - Dataset with cycle time {cycle_time} has been downloaded")
+
+def run_wps(wps_path: str, gfs_path: str, namelist_wps_path: str, max_dom: int, start_date: datetime, end_date: datetime, opts = None):
+    wps_params = {
+        "max_dom": str(max_dom),
+        "start_date": start_date.strftime("%Y-%m-%d_%H:%M:%S"),
+        "end_date": end_date.strftime("%Y-%m-%d_%H:%M:%S")
+    }
     
-    data = generate_url(folder_path, start_date, issued_time, forecast_time, increment, left_lon, right_lon, top_lat, bottom_lat)
-    with ThreadPoolExecutor(max_workers=n_worker) as executor:
-        executor.map(download_worker, data)
-    print(f"All GFS files with issued time {issued_time} has been downloaded")
+    if opts:
+        wps_params.update(opts)
 
-# Read namelist.wps file then replace start_date and end_date value
-def change_namelist_wps(start_date: date, end_date: date, namelist_path: str):
-    # parse into YYYY-mm-dd format (eg: 2023-01-27)
-    current_start  = start_date.strftime("%Y-%m-%d")
-    current_end    = end_date.strftime("%Y-%m-%d")
+    for key in ["parent_id", "parent_grid_ratio", "i_parent_start", "j_parent_start", "e_we", "e_sn"]:
+        value = wps_params.get(key)
+        if value != None and len(value.split(",")) != max_dom:
+            sys.exit(f"Error: WPS - length of {key} value is not matched to max_dom parameter")
 
-    # Use sed command to change the date value (Credit to : absen22 @github)
-    subprocess.run([f"sed -i.backup -r '/^ start_date/s/'2000-01-01_00:00:00'/'{current_start}_00:00:00'/g' {namelist_path}"], shell=True)
-    subprocess.run([f"sed -i.backup -r '/^ end_date/s/'2000-01-01_00:00:00'/'{current_end}_00:00:00'/g' {namelist_path}"], shell=True)
+    with open(namelist_wps_path, "r") as file:
+        lines = file.readlines()
+        for i, line in enumerate(lines):
+            for variable, value in wps_params.items():
+                matched = re.search(rf"{variable}\s*=\s*[^,]+,", line)
+                if matched:
+                    index_of_equal_sign = line.find("=")
 
-    print("namelist.wps file has been updated!") 
-    print(f"start_date value changed to {current_start}")
-    print(f"end_date value changed to {current_end}")
+                    if variable in ["wrf_core", "map_proj", "geog_data_path", "out_format", "prefix", "fg_name"]:
+                        lines[i] = f"{line[:index_of_equal_sign + 1]} '{value}',\n"
+                        continue
 
-# Read namelist.input file then replace start_year, start_month, start_day, start_hour, end_year, end_month, end_day, end_hour
-def change_namelist_wrf(start_date: date, end_date: date, namelist_path: str):
-    current_start_date  = start_date.strftime("%Y-%m-%d").split("-")
-    current_end_date    = end_date.strftime("%Y-%m-%d").split("-")
-    run_days            = int((end_date - start_date).total_seconds() / 86400)
+                    if variable in ["start_date", "end_date", "geog_data_res"]:
+                        formatted = f"'{value}',"
+                        lines[i] = f"{line[:index_of_equal_sign + 1]} {formatted * max_dom}\n"
+                        continue
+                    
+                    lines[i] = f"{line[:index_of_equal_sign + 1]} {str(value)},\n"
 
-    # Use sed command to change the date value (Credit to : absen22 @github)
-    # change run_days value
-    subprocess.run([f"sed -i.backup -r '/^ run_days/s/'0'/'{run_days}'/g' {namelist_path}"], shell=True)
-
-    # change start values
-    subprocess.run([f"sed -i.backup -r '/^ start_year/s/'2000'/'{current_start_date[0]}'/g' {namelist_path}"], shell=True)
-    subprocess.run([f"sed -i.backup -r '/^ start_month/s/'01'/'{current_start_date[1]}'/g' {namelist_path}"], shell=True)
-    subprocess.run([f"sed -i.backup -r '/^ start_day/s/'01'/'{current_start_date[2]}'/g' {namelist_path}"], shell=True)
+    with open(namelist_wps_path, "w") as file:
+        file.writelines(lines)
     
-    # change end values
-    subprocess.run([f"sed -i.backup -r '/^ end_year/s/'2000'/'{current_end_date[0]}'/g' {namelist_path}"], shell=True)
-    subprocess.run([f"sed -i.backup -r '/^ end_month/s/'01'/'{current_end_date[1]}'/g' {namelist_path}"], shell=True)
-    subprocess.run([f"sed -i.backup -r '/^ end_day/s/'01'/'{current_end_date[2]}'/g' {namelist_path}"], shell=True)
-    
-    print("namelist.input file has been updated!")
-    print("The model will simulate from {start} to {end}".format(start = start_date.strftime("%d-%m-%Y"), end = end_date.strftime("%d-%m-%Y")))
+    logging.info(f"INFO: WPS - Configuration file updated")
 
-# Run a step to generate met_em file
-def run_wps(wps_path: str, gfsout_path: str, start_date: date):
     # Delete FILE* and met_em* files from previous run
     subprocess.run([f"rm {wps_path}/FILE*"],shell=True)
+    subprocess.run([f"rm {wps_path}/PFILE*"], shell=True)
     subprocess.run([f"rm {wps_path}/met_em*"], shell=True)
     subprocess.run([f"rm {wps_path}/GRIBFILE*"], shell=True)
-    
-    #execute geogrid.exe
+    subprocess.run([f"rm {wps_path}/geo_em*"], shell=True)
+
+    # Execute geogrid.exe
     subprocess.run("./geogrid.exe", cwd=wps_path)
-    print("geogrid.exe executed")
-    
-    #create link to GFS data
-    gfs_date_folder = start_date.strftime("%Y-%m-%d")
-    subprocess.run(["./link_grib.csh", f"{gfsout_path}/{gfs_date_folder}/*"], cwd=wps_path)
-    print("Link grib created")
-    
-    # create link to variable tables
+    logging.info("INFO: WPS - geogrid.exe completed")
+
+    # Create a link to GFS dataset
+    subprocess.run(["./link_grib.csh", f"{gfs_path}/{start_date.strftime('%Y-%m-%d')}/*"], cwd=wps_path)
+    logging.info("INFO: WPS - GFS dataset linked successfully")
+
+    # Create a symlink to GFS Variable Table
     if os.path.exists(f"{wps_path}/Vtable"):
-        print("Linked Vtable.GFS file Exists")
+        logging.info("INFO: WPS - Vtable.GFS is already linked")
     else:
         subprocess.run(["ln", "-sf" ,f"{wps_path}/ungrib/Variable_Tables/Vtable.GFS", "Vtable"], cwd=wps_path)
-        print("Vtable.GFS Symlink created")
+        logging.info("INFO: WPS - Symlink of Vtable.GFS created")
     
-    #execute ungrib.exe
+    # Execute ungrib.exe
     subprocess.run("./ungrib.exe", cwd=wps_path)
-    
-    #execute metgrid.exe
-    subprocess.run("./metgrid.exe", cwd=wps_path)
+    logging.info("INFO: WPS - ungrib.exe completed")
 
-# Run WRF model
-def run_wrf(wps_path: str, wrf_path: str, np: int):
-    # Delete the met_em files from last simulation
+    # Execute metgrid.exe
+    subprocess.run("./metgrid.exe", cwd=wps_path)
+    logging.info("INFO: WPS - metgrid.exe completed")
+
+    logging.info("INFO: WPS - Process completed. met_em files is ready")
+
+def run_wrf(wps_path: str, wrf_path: str, wrfout_path: str, namelist_input_path: str, run_days: int, max_dom: int, start_date: datetime, end_date: datetime, num_proc: int, wrfout_saved_domain: int, opts = None):
+    wrf_params = {
+        "run_days": str(run_days),
+        "start_year": str(start_date.year),
+        "start_month": "%02d" % start_date.month,
+        "start_day": "%02d" % start_date.day,
+        "start_hour": "%02d" % start_date.hour,
+        "end_year": str(end_date.year),
+        "end_month": "%02d" % end_date.month,
+        "end_day": "%02d" % end_date.day,
+        "end_hour": "%02d" % end_date.hour,
+        "max_dom": str(max_dom)
+    }
+    if opts:
+        wrf_params.update(opts)
+
+    for key in ["e_we", "e_sn", "e_vert", "dx", "dy", "grid_id", "parent_id", "i_parent_start", "j_parent_start", "parent_grid_ratio", "parent_time_step_ratio"]:
+        value = wrf_params.get(key)
+        if value != None and len(value.split(",")) != max_dom:
+            sys.exit(f"Error: WRF Model - length of {key} value is not matched to max_dom parameter")
+
+    with open(namelist_input_path, "r") as file:
+        lines = file.readlines()
+
+        for i, line in enumerate(lines):
+            for variable, value in wrf_params.items():
+                matched = re.search(rf"{variable}\s*=\s*[^,]+,", line)
+                if matched:
+                    index_of_equal_sign = line.find("=")
+                    
+                    # Change time_control parameter
+                    if variable in ["start_year", "start_month", "start_day", "start_hour", "end_year", "end_month", "end_day", "end_hour"]:
+                        lines[i] = f"{line[:index_of_equal_sign + 1]} {((value + ', ') * max_dom)}\n"
+                        continue
+
+                    lines[i] = f"{line[:index_of_equal_sign + 1]} {value},\n"
+
+    with open(namelist_input_path, "w") as file:
+        file.writelines(lines)
+
+    logging.info("INFO: WRF Model - Configuration file updated")
+    logging.info(f"INFO: WRF Model - Model will take a simulation from {start_date.strftime('%Y-%m-%d_%H:%M:%S')} to {end_date.strftime('%Y-%m-%d_%H:%M:%S')}")
+
+    # Delete unused files from previous run
     subprocess.run([f"rm {wrf_path}/met_em*"], shell=True)
-    
-    # Create symlink to all files named met_em*
+    subprocess.run([f"rm {wrf_path}/wrfout*"], shell=True)
+    subprocess.run([f"rm {wrf_path}/wrfrst*"], shell=True)
+
+    # Create a new symlink to all metgrid files from WPS folder
     subprocess.run([f"ln -sf {wps_path}/met_em* ."], shell=True, cwd=wrf_path)
-    print("All met_em* files has been linked")
-    
+    logging.info("INFO: WRF Model - met_em* files has been linked")
+
     # Execute real.exe
-    subprocess.run([f"mpirun -np {np} ./real.exe"], shell=True, cwd=wrf_path)
-    print("real.exe executed")
-    
+    subprocess.run([f"mpirun -np {num_proc} ./real.exe"], shell=True, cwd=wrf_path)
+    logging.info("INFO: WRF Model - real.exe executed")
+
     # Check the output from real.exe before execute wrf.exe
     rsl_error = subprocess.check_output(["tail --lines 1 rsl.error.0000"], shell=True, cwd=wrf_path)
     if re.search("SUCCESS COMPLETE REAL_EM INIT", str(rsl_error)):
         # Execute wrf.exe
-        subprocess.run([f"mpirun -np {np} ./wrf.exe"], shell=True, cwd=wrf_path)
-        print("SUCCESS COMPLETE REAL_EM INIT")
+        subprocess.run([f"mpirun -np {num_proc} ./wrf.exe"], shell=True, cwd=wrf_path)
+        logging.info("INFO: WRF Model - Simulation completed")
     else:
-        sys.exit("Check namelist.input")
+        sys.exit("Error: WRF Model - Check namelist.input configuration")
 
-# Move the output to specific folder based on selected domain
-def move_output(wrf_path: str, wrfout_path: str, start_date: date, domain: int):
-    wrfout_date = start_date.strftime("%Y-%m-%d")
-    folder_path = f"{wrfout_path}/{wrfout_date}"
-    if not(os.path.isdir(folder_path)):
-        os.makedirs(folder_path)
+    # Move output to assigned location
+    wrfout_folder_path = f"{wrfout_path}/{start_date.strftime('%Y-%m-%d')}"
+    if not(os.path.isdir(wrfout_folder_path)):
+        os.makedirs(wrfout_folder_path)
     
-    subprocess.run([f"mv {wrf_path}/wrfout_d0{domain}* {folder_path}/wrfout_d0{domain}_{wrfout_date}.nc"], shell=True, cwd=wrf_path)
-    print(f"WRF simulation files on domain {domain} has been saved to {wrfout_path}")
+    subprocess.run([f"mv {wrf_path}/wrfout_d0{wrfout_saved_domain}* {wrfout_folder_path}/wrfout_d0{wrfout_saved_domain}_{start_date}.nc"], shell=True, cwd=wrf_path)
+    logging.info(f"INFO: WRF Model - Simulation files on domain {wrfout_saved_domain} has been saved to {wrfout_folder_path}")
 
 # Calculate execution time
 def calculate_execution_time(start: float, stop: float):
     if stop - start < 60:
         execution_duration = ("%1d" % (stop - start))
-        print(f"Process completed in {execution_duration} seconds")
-        exit(0)
+        logging.info(f"INFO: Automation - Process completed in {execution_duration} seconds")
+        sys.exit(0)
     elif stop - start < 3600:
         execution_duration = ("%1d" % ((stop - start) / 60))
-        print(f"Process completed in {execution_duration} minutes")
-        exit(0)
+        logging.info(f"INFO: Automation - Process completed in {execution_duration} minutes")
+        sys.exit(0)
     else:
         execution_duration = ("%1d" % ((stop - start) / 3600))
-        print(f"Process complete in {execution_duration} hours")
-        exit(0)
+        logging.info(f"INFO: Automation - Process complete in {execution_duration} hours")
+        sys.exit(0)

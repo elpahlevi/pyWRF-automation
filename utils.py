@@ -181,7 +181,7 @@ def run_wrf(wps_path: str, wrf_path: str, wrfout_path: str, namelist_input_path:
     if not(os.path.isdir(wrfout_folder_path)):
         os.makedirs(wrfout_folder_path)
     
-    subprocess.run([f"mv {wrf_path}/wrfout_d0{wrfout_saved_domain}* {wrfout_folder_path}/wrfout_d0{wrfout_saved_domain}_{start_date}.nc"], shell=True, cwd=wrf_path)
+    subprocess.run([f"mv {wrf_path}/wrfout_d0{wrfout_saved_domain}* {wrfout_folder_path}/wrfout_d0{wrfout_saved_domain}_{start_date.strftime('%Y-%m-%d')}.nc"], shell=True, cwd=wrf_path)
     logging.info(f"INFO: WRF Model - Simulation files on domain {wrfout_saved_domain} has been saved to {wrfout_folder_path}")
 
 # Calculate execution time

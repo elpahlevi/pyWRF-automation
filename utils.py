@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
-import os, shutil, sys, re, subprocess, requests, time, logging
+import os, sys, re, subprocess, requests, time, logging
 
 # For logging purposes
 logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO)
@@ -18,7 +18,7 @@ def gfs_download_worker(data):
     else:
         logging.info(f"INFO: GFS Downlaoder - File {Path(data[1]).name} is already exist, skipped")
 
-# Download GFS dataset concurrently
+# Function to download GFS dataset concurrently
 def download_gfs(path: str, n_worker: int, start_date: datetime, forecast_time: int, increment: int, cycle_time: str, left_lon: float, right_lon: float, top_lat: float, bottom_lat: float):
     if forecast_time > 384:
         sys.exit("ERROR: GFS Downloader - Forecast time can't be more than 384")
@@ -40,6 +40,7 @@ def download_gfs(path: str, n_worker: int, start_date: datetime, forecast_time: 
         executor.map(gfs_download_worker, zip(list_url, list_filepath))
     logging.info(f"INFO: GFS Downloader - Dataset with cycle time {cycle_time} has been downloaded")
 
+# Function to execute WPS sequences
 def run_wps(wps_path: str, gfs_path: str, namelist_wps_path: str, max_dom: int, start_date: datetime, end_date: datetime, opts = None):
     wps_params = {
         "max_dom": str(max_dom),
@@ -53,7 +54,7 @@ def run_wps(wps_path: str, gfs_path: str, namelist_wps_path: str, max_dom: int, 
     for key in ["parent_id", "parent_grid_ratio", "i_parent_start", "j_parent_start", "e_we", "e_sn"]:
         value = wps_params.get(key)
         if value != None and len(value.split(",")) != max_dom:
-            sys.exit(f"Error: WPS - length of {key} value is not matched to max_dom parameter")
+            sys.exit(f"Error: WPS - length of {key} value mismatched to max_dom parameter")
 
     with open(namelist_wps_path, "r") as file:
         lines = file.readlines()
@@ -111,6 +112,7 @@ def run_wps(wps_path: str, gfs_path: str, namelist_wps_path: str, max_dom: int, 
 
     logging.info("INFO: WPS - Process completed. met_em files is ready")
 
+# Function to execute WRF model
 def run_wrf(wps_path: str, wrf_path: str, wrfout_path: str, namelist_input_path: str, run_days: int, max_dom: int, start_date: datetime, end_date: datetime, num_proc: int, wrfout_saved_domain: int, opts = None):
     wrf_params = {
         "run_days": str(run_days),
@@ -130,7 +132,7 @@ def run_wrf(wps_path: str, wrf_path: str, wrfout_path: str, namelist_input_path:
     for key in ["e_we", "e_sn", "e_vert", "dx", "dy", "grid_id", "parent_id", "i_parent_start", "j_parent_start", "parent_grid_ratio", "parent_time_step_ratio"]:
         value = wrf_params.get(key)
         if value != None and len(value.split(",")) != max_dom:
-            sys.exit(f"Error: WRF Model - length of {key} value is not matched to max_dom parameter")
+            sys.exit(f"Error: WRF Model - length of {key} value mismatched to max_dom parameter")
 
     with open(namelist_input_path, "r") as file:
         lines = file.readlines()

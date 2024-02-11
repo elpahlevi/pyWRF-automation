@@ -134,6 +134,9 @@ def run_wrf(wps_path: str, wrf_path: str, wrfout_path: str, namelist_input_path:
         if value != None and len(value.split(",")) != max_dom:
             sys.exit(f"Error: WRF Model - length of {key} value mismatched to max_dom parameter")
 
+    if wrfout_saved_domain > max_dom:
+        sys.exit(f"Error: WRF Model - Maximum saved WRF output file domain must be equal or lower to max_domain parameter")
+
     with open(namelist_input_path, "r") as file:
         lines = file.readlines()
 
